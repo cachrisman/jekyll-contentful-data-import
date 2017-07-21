@@ -28,7 +28,17 @@ module Jekyll
       end
 
       def destination_file(content_type_directory, entry)
-        File.join(content_type_directory, "#{entry['sys']['id']}.yaml")
+        File.join(content_type_directory, "#{filename(entry)}.yaml")
+      end
+
+      def filename(entry)
+        if config.key?('individual_entry_filename_field')
+          filename = instance_eval("entry#{config['individual_entry_filename_field']}")
+        else
+          filename = entry['sys']['id']
+        end
+
+        filename
       end
     end
   end
