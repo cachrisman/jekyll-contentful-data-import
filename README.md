@@ -32,7 +32,11 @@ spaces and content types and put the resulting data in the
 
 ### --rebuild option
 
-The `contentful` command has a `--rebuild` option which will trigger a rebuild of your site
+The `jekyll contentful` command has a `--rebuild` option which will trigger a rebuild of your site
+
+### --wait option
+
+The `jekyll contentful` command has a `--wait X` option where `X` is an integer greater than 0 specifying the number of seconds to wait before retrieving data from Contentful. Useful when using this plugin with Contentful's publish webhook because the newly updated/published entries can take several seconds after the webhook fires to be available via Contentful's Delivery API.
 
 ## Configuration
 
@@ -56,6 +60,7 @@ contentful:
         base_path: app_path         # Optional - Defaults to Current directory
         destination: destination_in_data # Optional - Defaults to _data/contentful/spaces
         individual_entry_files: true # Optional - Defaults to false
+        individual_entry_filename_field: "['slug']" # Optional - Defaults to "['sys']['id']"
 ```
 
 Parameter              | Description
@@ -70,6 +75,7 @@ client_options         | Hash describing Contentful::Client configuration. See [
 base_path              | String with path to your Jekyll Application, defaults to current directory. Path is relative to your current location.
 destination            | String with path within `_data` under which to store the output yaml file. Defaults to contentful/spaces
 individual_entry_files | Boolean, if true will create an individual file per entry separated in folders by content type, file path will be `{space_alias}/{content_type_id}/{entry_id}.yaml`. Default behavior is to create a file per space. Usage is affected when this is set to true, please look in the section below.
+individual_entry_filename_field | String specifying the entry field to use as the filename for the individual entry file. Note: needs the double quotes around the string to prevent type casting into an array (e.g.,  `"['slug']"`)
 
 You can add multiple spaces to your configuration
 
