@@ -18,6 +18,7 @@ module Jekyll
           setup_directory(content_type_directory)
 
           entries.each do |entry|
+            puts "Writing file: #{filename(entry)}.yaml"
             yaml_entry = YAML.dump(entry)
 
             File.open(destination_file(content_type_directory, entry), 'w') do |file|
