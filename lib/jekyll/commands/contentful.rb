@@ -23,6 +23,10 @@ module Jekyll
           [
             'rebuild', '-r', '--rebuild',
             'Rebuild Jekyll Site after fetching data'
+          ],
+          [
+            'wait', '-w', '--wait',
+            'Wait X seconds before fetching data and rebuilding Jekyll Site'
           ]
         ]
       end
@@ -37,6 +41,15 @@ module Jekyll
 
       def self.process(_args = [], options = {}, contentful_config = {})
         Jekyll.logger.info 'Starting Contentful import'
+
+        if options['wait']
+          if _args[0] and _args[0].to_i > 0
+            puts "Waiting for #{_args[0]} seconds"
+            sleep(_args[0].to_i)
+          else
+            raise "Invalid argument for --wait option. Only integers greater than 0 are valid"
+          end
+        end
 
         Jekyll::Contentful::Importer.new(contentful_config).run
 
