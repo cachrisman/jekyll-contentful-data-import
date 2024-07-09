@@ -10,8 +10,11 @@ module Jekyll
     class Importer
       attr_reader :config
 
-      def initialize(config)
-        @config = config
+      def initialize(jekyll_config)
+        @jekyll_config = jekyll_config
+        @config = jekyll_config.key?('contentful') ? jekyll_config['contentful'] : jekyll_config
+
+        autoload_mappers!
       end
 
       def run
@@ -19,6 +22,7 @@ module Jekyll
           space_client = client(
             value_for(options, 'space'),
             value_for(options, 'access_token'),
+            value_for(options, 'environment'),
             client_options(options.fetch('client_options', {}))
           )
 
@@ -62,7 +66,7 @@ module Jekyll
 
       def value_for(options, key)
         potential_value = options[key]
-        return ENV[potential_value.gsub('ENV_', '')] if potential_value.start_with?('ENV_')
+        return ENV[potential_value.gsub('ENV_', '')] if !potential_value.nil? && potential_value.start_with?('ENV_')
         potential_value
       end
 
@@ -90,10 +94,11 @@ module Jekyll
         all
       end
 
-      def client(space, access_token, options = {})
+      def client(space, access_token, environment = nil, options = {})
         options = {
           space: space,
           access_token: access_token,
+          environment: environment || 'master',
           dynamic_entries: :auto,
           raise_errors: true,
           integration_name: 'jekyll',
@@ -114,6 +119,14 @@ module Jekyll
         options.delete(:dynamic_entries)
         options.delete(:raise_errors)
         options
+      end
+
+      def autoload_mappers!
+        mapper_search_path = File.join(@jekyll_config['source'], @jekyll_config['plugins_dir'], 'mappers')
+        mapper_files = Jekyll::Utils.safe_glob(mapper_search_path, File.join('**', '*.rb'))
+        Jekyll::External.require_with_graceful_fail(mapper_files)
+      rescue StandardError
+        Jekyll.logger.debug "Couldn't find custom mappers"
       end
     end
   end

@@ -19,16 +19,17 @@ Gem::Specification.new do |s|
   s.require_paths = ["lib"]
 
   # The version of middleman-core your extension depends on
-  s.add_dependency("jekyll", ">= 2.5.0", "< 4")
+  s.add_dependency("jekyll", ">= 2.5.0", "< 5")
 
   # Additional dependencies
   s.add_dependency("contentful", '~> 2.1')
+  s.add_dependency("rich_text_renderer", '~> 0.3')
 
   s.add_development_dependency 'rubygems-tasks', '~> 0.2'
   s.add_development_dependency "guard"
   s.add_development_dependency "guard-rspec"
   s.add_development_dependency 'guard-rubocop'
-  s.add_development_dependency "bundler", "~> 1.6"
+  s.add_development_dependency "bundler", "~> 2"
   s.add_development_dependency "rake"
   s.add_development_dependency "rspec", "~> 3.0"
   s.add_development_dependency "vcr"

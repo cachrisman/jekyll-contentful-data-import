@@ -1,9 +1,29 @@
 # Change Log
 
-## Unreleased
+##Unreleased
+* Changed CI/CD vendor from tavis to circleci
+* Updated bundler
+* Fixed hash matching for ruby version greater than 3
+* Updated `jekyll` gem version
 
-## 1.6.0
+## v1.8.2
+* Updated `rich_text_renderer` gem version.
 
+## v1.8.1
+### Fixed
+* Ensure configuration passed as `Jekyll.configuration['contentful']` from a `rake` task also works. [#68](https://github.com/contentful/jekyll-contentful-data-import/issues/68)
+* Ensure localized assets that don't have a fallback locale don't fail upon import.
+
+## v1.8.0
+### Added
+* Added capability to autoload mappers [#22](https://github.com/contentful/jekyll-contentful-data-import/issues/22)
+* *This feature is currently in BETA state, changes may occur as patch fixes* Added support for RichText and added the `rich_text` view filter.
+
+## v1.7.0
+### Added
+* Added top-level environment assignment, with support for `ENV_` access [#61](https://github.com/contentful/jekyll-contentful-data-import/issues/61)
+
+## v1.6.0
 ### Added
 * Independent file per entry [#45](https://github.com/contentful/jekyll-contentful-data-import/pull/45) [#10](https://github.com/contentful/jekyll-contentful-data-import/issues/10) [#23](https://github.com/contentful/jekyll-contentful-data-import/pull/23) [#25](https://github.com/contentful/jekyll-contentful-data-import/issues/25)
 * Added User Agent Integration Headers
