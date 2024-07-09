@@ -21,8 +21,12 @@ class ExporterDouble
 end
 
 describe Jekyll::Contentful::Importer do
+  before :each do
+    allow(Jekyll.logger).to receive(:debug).with("Couldn't find custom mappers")
+  end
+
   let(:config) do
-    {
+    { 'contentful' => {
       'spaces' => [
         {
           'example' => {
@@ -31,7 +35,7 @@ describe Jekyll::Contentful::Importer do
           }
         }
       ]
-    }
+    }}
   end
   subject { described_class.new(config) }
 
@@ -43,12 +47,13 @@ describe Jekyll::Contentful::Importer do
     describe '#client' do
       it 'creates client with some defaults' do
         expect(::Contentful::Client).to receive(:new).with(
-          space: 'foo',
-          access_token: 'foobar',
-          dynamic_entries: :auto,
-          raise_errors: true,
-          integration_name: 'jekyll',
-          integration_version: Jekyll::Contentful::VERSION
+          { space: 'foo',
+            access_token: 'foobar',
+            environment: 'master',
+            dynamic_entries: :auto,
+            raise_errors: true,
+            integration_name: 'jekyll',
+            integration_version: Jekyll::Contentful::VERSION }
         )
 
         subject.client('foo', 'foobar')
@@ -56,15 +61,16 @@ describe Jekyll::Contentful::Importer do
 
       it 'can override the defaults' do
         expect(::Contentful::Client).to receive(:new).with(
-          space: 'foo',
-          access_token: 'foobar',
-          dynamic_entries: :auto,
-          raise_errors: false,
-          integration_name: 'jekyll',
-          integration_version: Jekyll::Contentful::VERSION
+          { space: 'foo',
+            access_token: 'foobar',
+            environment: 'master',
+            dynamic_entries: :auto,
+            raise_errors: false,
+            integration_name: 'jekyll',
+            integration_version: Jekyll::Contentful::VERSION }
         )
 
-        subject.client('foo', 'foobar', raise_errors: false)
+        subject.client('foo', 'foobar', 'master', raise_errors: false)
       end
     end
 
@@ -92,27 +98,29 @@ describe Jekyll::Contentful::Importer do
       it 'runs exporter with correct arguments' do
         allow(subject).to receive(:client).and_return(ClientDouble.new)
 
-        expect(Jekyll::Contentful::SingleFileDataExporter).to receive(:new).with('example', [], config['spaces'].first['example']).and_return(ExporterDouble.new)
+        expect(Jekyll::Contentful::SingleFileDataExporter).to receive(:new).with('example', [], config['contentful']['spaces'].first['example']).and_return(ExporterDouble.new)
 
         subject.run
       end
 
       it 'runs multifile exporter when passed :individual_entry_files flag' do
         config = {
-          'spaces' => [
-            {
-              'example' => {
-                'space' => 'cfexampleapi',
-                'access_token' => 'b4c0n73n7fu1',
-                'individual_entry_files' => true
+          'contentful' => {
+            'spaces' => [
+              {
+                'example' => {
+                  'space' => 'cfexampleapi',
+                  'access_token' => 'b4c0n73n7fu1',
+                  'individual_entry_files' => true
+                }
               }
-            }
-          ]
+            ]
+          }
         }
         subject = described_class.new(config)
         allow(subject).to receive(:client).and_return(ClientDouble.new)
 
-        expect(Jekyll::Contentful::MultiFileDataExporter).to receive(:new).with('example', [], config['spaces'].first['example']).and_return(ExporterDouble.new)
+        expect(Jekyll::Contentful::MultiFileDataExporter).to receive(:new).with('example', [], config['contentful']['spaces'].first['example']).and_return(ExporterDouble.new)
 
         subject.run
       end
@@ -139,6 +147,42 @@ describe Jekyll::Contentful::Importer do
 
         subject.get_entries(client, {'all_entries' => true, 'all_entries_page_size' => 2})
       end
+    end
+  end
+
+  describe 'mappers are autoloaded' do
+    let(:jekyll_config) do
+      { 'contentful' => {
+        'spaces' => [
+          {
+            'example' => {
+              'space' => 'cfexampleapi',
+              'access_token' => 'b4c0n73n7fu1'
+            }
+          }
+        ]
+      }}
+    end
+
+    it 'custom mappers are autoloaded' do
+      config = jekyll_config.merge('source' => '.', 'plugins_dir' => '_plugins')
+
+      allow(subject).to receive(:spaces).and_return([['foo', {'space' => 'foo', 'access_token' => 'bar'}], ['bar', {'space' => 'bar', 'access_token' => 'foo'}]])
+      allow(subject).to receive(:client).and_return(ClientDouble.new)
+
+      expect(Jekyll::Utils).to receive(:safe_glob).with(File.join('.', '_plugins', 'mappers'), File.join('**', '*.rb')) { ['some_mapper.rb'] }
+      expect(Jekyll::External).to receive(:require_with_graceful_fail).with(['some_mapper.rb'])
+
+      described_class.new(config)
+    end
+
+    it 'raises a warning if no mappers found' do
+      allow(subject).to receive(:spaces).and_return([['foo', {'space' => 'foo', 'access_token' => 'bar'}], ['bar', {'space' => 'bar', 'access_token' => 'foo'}]])
+      allow(subject).to receive(:client).and_return(ClientDouble.new)
+
+      expect(Jekyll.logger).to receive(:debug).with("Couldn't find custom mappers")
+
+      described_class.new(config)
     end
   end
 end

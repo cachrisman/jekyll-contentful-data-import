@@ -2,7 +2,9 @@
 
 [![Build Status](https://travis-ci.org/contentful/jekyll-contentful-data-import.svg?branch=master)](https://travis-ci.org/contentful/jekyll-contentful-data-import)
 
-Jekyll-Contentful-Data-Import is a [Jekyll](http://jekyllrb.com/) extension to use the Jekyll static site generator together with the API-driven [Contentful CMS](https://www.contentful.com). It is powered by the [Contentful Ruby Gem](https://github.com/contentful/contentful.rb).
+[Contentful](https://www.contentful.com) provides a content infrastructure for digital teams to power content in websites, apps, and devices. Unlike a CMS, Contentful was built to integrate with the modern software stack. It offers a central hub for structured content, powerful management and delivery APIs, and a customizable web app that enable developers and content creators to ship digital products faster.
+
+Jekyll-Contentful-Data-Import is a [Jekyll](http://jekyllrb.com/) extension to use the Jekyll static site generator together with [Contentful](https://www.contentful.com). It is powered by the [Contentful Ruby Gem](https://github.com/contentful/contentful.rb).
 
 Experience the power of Jekyll while staying sane as a developer by letting end-users edit content in a web-based interface.
 
@@ -32,11 +34,9 @@ spaces and content types and put the resulting data in the
 
 ### --rebuild option
 
-The `jekyll contentful` command has a `--rebuild` option which will trigger a rebuild of your site
+The `contentful` command has a `--rebuild` option which will trigger a rebuild of your site
 
 ### --wait option
-
-The `jekyll contentful` command has a `--wait X` option where `X` is an integer greater than 0 specifying the number of seconds to wait before retrieving data from Contentful. Useful when using this plugin with Contentful's publish webhook because the newly updated/published entries can take several seconds after the webhook fires to be available via Contentful's Delivery API.
 
 ## Configuration
 
@@ -45,37 +45,41 @@ To configure the extension, add the following configuration block to Jekyll's `_
 ```yaml
 contentful:
   spaces:
-    - example: # Jekyll _data folder identifier - Required
-        space: cfexampleapi         # Required
-        access_token: b4c0n73n7fu1  # Required
-        cda_query:                  # Optional
+    - example:                              # Jekyll _data folder identifier - Required
+        space: cfexampleapi                 # Required
+        access_token: b4c0n73n7fu1          # Required
+        environment: master                 # Optional
+        cda_query:                          # Optional
           include: 2
           limit: 100
-        all_entries: true           # Optional - Defaults to false, only grabbing the amount set on CDA Query
-        all_entries_page_size: 1000 # Optional - Defaults to 1000, maximum amount of entries per CDA Request for all_entries
-        content_types:              # Optional
+        all_entries: true                   # Optional - Defaults to false, only grabbing the amount set on CDA Query
+        all_entries_page_size: 1000         # Optional - Defaults to 1000, maximum amount of entries per CDA Request for all_entries
+        content_types:                      # Optional
           cat: MyCoolMapper
-        client_options:             # Optional
+        client_options:                     # Optional
           api_url: 'preview.contentful.com' # Defaults to 'api.contentful.com' which is Production
-        base_path: app_path         # Optional - Defaults to Current directory
-        destination: destination_in_data # Optional - Defaults to _data/contentful/spaces
-        individual_entry_files: true # Optional - Defaults to false
-        individual_entry_filename_field: "['slug']" # Optional - Defaults to "['sys']['id']"
+          max_include_resolution_depth: 5   # Optional - Defaults to 20, maximum amount of levels to resolve includes
+        base_path: app_path                 # Optional - Defaults to Current directory
+        destination: destination_in_data    # Optional - Defaults to _data/contentful/spaces
+        individual_entry_files: true        # Optional - Defaults to false
+        rich_text_mappings:                 # Optional - Defaults to {}
+          embedded-entry-block: MyEntryRenderer
 ```
 
 Parameter              | Description
 ----------             | ------------
 space                  | Contentful Space ID
 access_token           | Contentful Delivery API access token
+environment            | Space environment, defaults to `master`
 cda_query              | Hash describing query configuration. See [contentful.rb](https://github.com/contentful/contentful.rb) for more info (look for filter options there). Note that by default only 100 entries will be fetched, this can be configured to up to 1000 entries using the `limit` option.
 all_entries            | Boolean, if true will run multiple queries to the API until it fetches all entries for the space
 all_entries_page_size  | Integer, the amount of maximum entries per CDA Request when fetching :all_entries
 content_types          | Hash describing the mapping applied to entries of the imported content types
-client_options         | Hash describing Contentful::Client configuration. See [contentful.rb](https://github.com/contentful/contentful.rb) for more info.
+client_options         | Hash describing `Contentful::Client` configuration. See [contentful.rb](https://github.com/contentful/contentful.rb) for more info.
 base_path              | String with path to your Jekyll Application, defaults to current directory. Path is relative to your current location.
 destination            | String with path within `_data` under which to store the output yaml file. Defaults to contentful/spaces
 individual_entry_files | Boolean, if true will create an individual file per entry separated in folders by content type, file path will be `{space_alias}/{content_type_id}/{entry_id}.yaml`. Default behavior is to create a file per space. Usage is affected when this is set to true, please look in the section below.
-individual_entry_filename_field | String specifying the entry field to use as the filename for the individual entry file. Note: needs the double quotes around the string to prevent type casting into an array (e.g.,  `"['slug']"`)
+rich_text_mappings     | Hash with `'nodeTyoe' => RendererClass` pairs determining overrides for the [`RichTextRenderer` library](https://github.com/contentful/rich-text-renderer.rb) configuration.
 
 You can add multiple spaces to your configuration
 
@@ -110,21 +114,51 @@ end
 
 #### Caveats
 
-Jekyll itself only allows you to import code as plugins only for its recognized plugin entry points.
-Therefore we need to use a custom [Rakefile](https://github.com/contentful/contentful_jekyll_examples/blob/master/examples/custom_mapper/example/Rakefile) to import the mapper and required files:
+**Note:** This has changed since previous version.
 
-```ruby
-require 'jekyll'
-require 'jekyll-contentful-data-import'
-require './_plugins/mappers'
+When creating custom mappers, you should create them in a file under `#{source_dir}/_plugins/mappers/`.
+This will allow the autoload mechanism that has been included in the latest version.
 
-desc "Import Contentful Data with Custom Mappers"
-task :contentful do
-  Jekyll::Commands::Contentful.process([], {}, Jekyll.configuration['contentful'])
-end
+With the autoload mechanism, there is no longer a need to create a `rake` task for importing using custom mappers.
+
+If you already have a custom `rake` task, the new autoload mechanism will not affect it from working as it was working previously.
+
+### Rich Text *Beta*
+
+To render rich text in your views, you can use the `rich_text` filter:
+
+```liquid
+{{ entry.rich_text_field | rich_text }}
 ```
 
-Then proceed to run: `bundle exec rake contentful`
+This will output the generated HTML generated by the [`RichTextRenderer` library](https://github.com/contentful/rich-text-renderer.rb).
+
+#### Adding custom renderers
+
+When using rich text, if you're planning to embed entries, then you need to create your custom renderer for them. You can read how create your own renderer classes [here](https://github.com/contentful/rich-text-renderer.rb#using-different-renderers).
+
+To configure the mappings, you need to add them in your `contentful` block like follows:
+
+```yaml
+contentful:
+  spaces:
+    - example:
+      # ... all the regular config ...
+      rich_text_mappings:
+        embedded-entry-block: MyCustomRenderer
+```
+
+You can also add renderers for all other types of nodes if you want to have more granular control over the rendering.
+
+This will use the same autoload strategy included for custom entry mappers, therefore, you should include your mapper classes in `#{source_dir}/_plugins/mappers/`.
+
+#### Using the helper with multiple Contentful spaces
+
+In case you have multiple configured spaces, and have different mapping configurations for them. You can specify which space you want to pull the configuration from when using the helper.
+
+The helper receives an additional optional parameter for the space name. By default it is `nil`, indicating the first available space.
+
+So, if for example you have 2 spaces with different configurations, to use the space called `foo`, you should call the helper as: `{{ entry.field | rich_text: "foo" }}`.
 
 ### Hiding Space and Access Token in Public Repositories
 
@@ -141,15 +175,17 @@ therefore you can do the following:
       - example:
           space:        ENV_CONTENTFUL_SPACE_ID
           access_token: ENV_CONTENTFUL_ACCESS_TOKEN
+          environment:  ENV_CONTENTFUL_ENVIRONMENT
   ```
 
-  (Your Space ID will be looked upon on `ENV['CONTENTFUL_SPACE_ID']` and your Access Token on `ENV['CONTENTFUL_ACCESS_TOKEN']`.)
+  (Your Space ID will be looked upon on `ENV['CONTENTFUL_SPACE_ID']`, your Access Token on `ENV['CONTENTFUL_ACCESS_TOKEN']` and your environment on `ENV['CONTENTFUL_ENVIRONMENT']`.)
 
 3. Either add the following variables to your shell's configuration file (.bashrc or .bash_profile, for example):
 
   ```bash
   export CONTENTFUL_ACCESS_TOKEN=abc123
   export CONTENTFUL_SPACE_ID=abc123
+  export CONTENTFUL_ENVIRONMENT=master
   ```
 
   (And run `source ~/.bashrc` or open new terminal to enable changes.)
@@ -157,7 +193,7 @@ therefore you can do the following:
   Or specify them on the command line:
 
   ```bash
-  CONTENTFUL_ACCESS_TOKEN=abc123 CONTENTFUL_SPACE_ID=abc123 jekyll contentful
+  CONTENTFUL_ACCESS_TOKEN=abc123 CONTENTFUL_SPACE_ID=abc123 CONTENTFUL_ENVIRONMENT=master jekyll contentful
   ```
 
 4. Party.
